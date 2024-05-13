@@ -225,7 +225,7 @@ body {
   height: 100%;
 }
 
-#card-1, #card-2, #card-3 {
+#card-0, #card-1, #card-2, #card-3 {
   display: flex;
   flex-direction: column;
   justify-content: space-evenly;
@@ -233,6 +233,10 @@ body {
   margin: 0;
   padding: 0;
   width: 100%;
+}
+
+#card-0 {
+  margin-bottom: 1rem;
 }
 
 #card-1 {
@@ -406,7 +410,7 @@ body {
   max-width: 25%;
 }
 
-#quick-stats-country-dropdown, #quick-stats-sector-dropdown, #quick-stats-industry-group-dropdown, #quick-stats-industry-dropdown, #quick-stats-bins-raioitems, #quick-stats-metrics-dropdown, #quick-stats-statistics-dropdown {
+#quick-stats-period-rangeslider, #quick-stats-country-dropdown, #quick-stats-sector-dropdown, #quick-stats-industry-group-dropdown, #quick-stats-industry-dropdown, #quick-stats-bins-raioitems, #quick-stats-metrics-dropdown, #quick-stats-statistics-dropdown {
   width: 90%
 }
 
@@ -422,7 +426,7 @@ body {
 
 /* Tab 2 Specs
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
-#card-1 P, #card-2 P, #card-3 P {
+#card-0 P, #card-1 P, #card-2 P, #card-3 P {
   margin: 2rem;
   color: inherit;
   font-weight: bold;
@@ -519,7 +523,7 @@ body {
     height: auto;
   }
 
-  #card-1 P, #card-2 P, #card-3 P {
+  #card-0 P, #card-1 P, #card-2 P, #card-3 P {
     align-self: auto;
   }
 

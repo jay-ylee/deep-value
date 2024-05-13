@@ -1,9 +1,13 @@
 from pathlib import Path
+from datetime import date
+
 import dash
 from dash import dash_table, Input, Output, State, html, dcc
+
 import plotly.express as px
 import plotly.graph_objs as go
 from plotly.subplots import make_subplots
+
 import pandas as pd
 
 from settings import AFTER_INCLUDE_ONLY, BINS
@@ -188,7 +192,21 @@ def build_quick_stats_panel():
     return html.Div(
         id="quick-stats",
         children=[
-            generate_section_banner("Select Group"),
+            generate_section_banner("Filter"),
+            html.Div(
+                id="card-0",
+                children=[
+                    html.P("Period"),
+                    dcc.RangeSlider(
+                        id="quick-stats-period-rangeslider",
+                        min=2014,
+                        max=2024,
+                        step=1,
+                        value=[2014, 2024],
+                        marks={2014: '2014', 2017: '2017', 2020: '2020', 2022: '2022', 2024: '2024'}
+                    ),
+                ],
+            ),
             html.Div(
                 id="card-1",
                 children=[
@@ -218,7 +236,7 @@ def build_quick_stats_panel():
                     ),
                 ],
             ),
-            generate_section_banner("Select Number of Bins"),
+            # generate_section_banner("Select Number of Bins"),
             html.Div(
                 id="card-2",
                 children=[
@@ -231,7 +249,7 @@ def build_quick_stats_panel():
                     ),
                 ],
             ),
-            generate_section_banner("Select Metrics & Statistics"),
+            # generate_section_banner("Select Metrics & Statistics"),
             html.Div(
                 id="card-3",
                 children=[
@@ -305,6 +323,7 @@ def build_top_panel():
 
 @app.callback(
     Output(component_id="eda-bar-chart",component_property="figure"),
+    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
     Input(component_id="quick-stats-country-dropdown", component_property="value"),
     Input(component_id="quick-stats-sector-dropdown", component_property="value"),
     Input(component_id="quick-stats-industry-group-dropdown", component_property="value"),
@@ -313,13 +332,13 @@ def build_top_panel():
     [Input(component_id="quick-stats-metrics-dropdown", component_property="value")],
     [Input(component_id="quick-stats-statistics-dropdown", component_property="value")],
 )
-def rendor_eda_bar_chart(vc, vs, vig, vi, vb, vm, vst):
+def rendor_eda_bar_chart(vp, vc, vs, vig, vi, vb, vm, vst):
     filtered_meta = meta
     filtered_meta = filtered_meta if vc == '0' else filtered_meta[filtered_meta['country'] == vc]
     filtered_meta = filtered_meta if vs == '0' else filtered_meta[filtered_meta['gics_sector'] == vs]
     filtered_meta = filtered_meta if vig == '0' else filtered_meta[filtered_meta['gics_industry_group'] == vig]
     filtered_meta = filtered_meta if vi == '0' else filtered_meta[filtered_meta['gics_industry'] == vi]
-    df = pd.merge(historical, filtered_meta, how='inner', on='_code')
+    df = pd.merge(historical[(historical['_year'] >= vp[0]) & (historical['_year'] <= vp[1])], filtered_meta, how='inner', on='_code')
     if AFTER_INCLUDE_ONLY:
         df = df[pd.to_datetime(df['_year'].astype(str) + df['_month'].astype(str).str.rjust(2, '0'), 
                                format='%Y%m') >= df['first_include']]
