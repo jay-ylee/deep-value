@@ -47,8 +47,8 @@ def build_banner():
             html.Div(
                 id="banner-text",
                 children=[
-                    html.H5("Deep Value Strategy"),
-                    html.H6("Project"),
+                    html.H5("Deep Value"),
+                    html.H6("Analysis and Modeling for Deep Value Strategy"),
                 ],
             ),
             html.Div(
@@ -311,10 +311,17 @@ def build_top_panel():
             # 8width graph
             html.Div(
                 id="metric-summary-session",
-                className="twelve columns",
+                className="nine columns",
                 children=[
                     generate_section_banner("Bar Chart"),
                     dcc.Graph(id="eda-bar-chart"),
+                ],
+            ),
+            html.Div(
+                id="metric-summary-session",
+                className="three columns",
+                children=[
+                    generate_section_banner("Count"),
                 ],
             ),
         ],
