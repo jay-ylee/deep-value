@@ -25,7 +25,7 @@ BINS_OPTIONS: Final[list[dict[str, str]]] = [
 #     {'label': 'Monthly Return (Start ~ High)', 'value': 'monthly_start_high_rtn'},
 #     {'label': 'Daily Return Average', 'value': 'daily_rtn_avg'},
 #     {'label': 'Volatility (1 Month)', 'value': 'daily_vola'},
-#     {'label': 'Volatility (1 Month, Only Downside)', 'value': 'daily_dvola'},
+#     # {'label': 'Volatility (1 Month, Only Downside)', 'value': 'daily_dvola'},
 #     {'label': 'MDD (1 Month)', 'value': 'monthly_mdd'},
 # ]
 
@@ -44,9 +44,18 @@ METRICS_OPTIONS: Final[list[dict[str, str]]] = [
     {'label': '익월 월초 대비 고점 수익률', 'value': 'monthly_start_high_rtn'},
     {'label': '익월 일 평균 수익률', 'value': 'daily_rtn_avg'},
     {'label': '익월 일 변동성', 'value': 'daily_vola'},
-    {'label': '익월 일 하방 변동성', 'value': 'daily_dvola'},
+    # {'label': '익월 일 하방 변동성', 'value': 'daily_dvola'},
     {'label': '익월 MDD', 'value': 'monthly_mdd'},
 ]
+
+METRICS_VISUAL_RANGE = {
+    'monthly_rtn': [-1., 1.],
+    'monthly_high_end_rtn': [-1., 0.],
+    'monthly_start_high_rtn': [0, 1.],
+    'daily_rtn_avg': [-1., 1.],
+    'daily_vola': [0, 1.],
+    'monthly_mdd': [0, 1.]
+}
 
 STATISTICS_OPTIONS: Final[list[dict[str, str]]] = [
     # {'label': '빈도수', 'value': 'count'},
