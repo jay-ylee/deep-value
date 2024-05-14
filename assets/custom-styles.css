@@ -435,6 +435,14 @@ body {
 
 /* Tab 2 metric row
 –––––––––––––––––––––––––––––––––––––––––––––––––– */
+#count-table {
+  width: 100%;
+  color: white;
+}
+
+#count-table td{
+  border-color: gray;
+}
 
 /*
   ##Device = Most of the Smartphones Mobiles / ipad (Portrait)

@@ -318,10 +318,11 @@ def build_top_panel():
                 ],
             ),
             html.Div(
-                id="metric-summary-session",
+                id="count-summary-session",
                 className="three columns",
                 children=[
                     generate_section_banner("Count"),
+                    html.Table(id="count-table")
                 ],
             ),
         ],
@@ -330,6 +331,7 @@ def build_top_panel():
 
 @app.callback(
     Output(component_id="eda-bar-chart",component_property="figure"),
+    Output(component_id="count-table",component_property="children"),
     Input(component_id="quick-stats-period-rangeslider", component_property="value"),
     Input(component_id="quick-stats-country-dropdown", component_property="value"),
     Input(component_id="quick-stats-sector-dropdown", component_property="value"),
@@ -373,7 +375,7 @@ def rendor_eda_bar_chart(vp, vc, vs, vig, vi, vb, vm, vst):
                     'color': 'rgb(245,130,32)',
                     'opacity': [0.5 + i / (2 * (len(df_result[(m, st)].index)-1)) for i in range(len(df_result[(m, st)].index)-1)]
                 },
-                hovertext=[f"Count: {ht}" for ht in df_count],
+                # hovertext=[f"Count: {ht}" for ht in df_count],
             ), row=stidx+1, col=midx+1)
 
     fig.for_each_xaxis(lambda x: x.update(showline=False, showgrid=False, zeroline=False))
@@ -388,7 +390,14 @@ def rendor_eda_bar_chart(vp, vc, vs, vig, vi, vb, vm, vst):
         font = dict(color = 'rgba(255,255,255,255)')
     )
 
-    return fig
+    table = []
+    for _, row in df_count.reset_index(drop=False).iterrows():
+        html_row = []
+        for i in range(len(row)):
+            html_row.append(html.Td([row.iloc[i]]))
+        table.append(html.Tr(html_row))
+
+    return fig, table
 
 
 def build_chart_panel():
