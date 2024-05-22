@@ -4,13 +4,13 @@ import dash
 from dash import dash_table, Input, Output, State, html, dcc
 
 import plotly.graph_objs as go
-import plotly.figure_factory as ff
+import plotly.express as px
 from plotly.subplots import make_subplots
 
 import numpy as np
 import pandas as pd
 
-from settings import AFTER_INCLUDE_ONLY, BINS, ORANGES
+from settings import AFTER_INCLUDE_ONLY, ORANGES
 from options import OPTIONS, METRICS_VISUAL_RANGE
 
 app = dash.Dash(
@@ -173,6 +173,10 @@ def generate_section_banner(title):
     return html.Div(className="section-banner", children=title)
 
 
+def generate_little_banner(title):
+    return html.Div(className="little-banner", children=title)
+
+
 def build_quick_stats_panel():
     return html.Div(
         id="quick-stats",
@@ -206,59 +210,51 @@ def build_quick_stats_panel():
                         id="quick-stats-country-dropdown",
                         options=country_options,
                         value="0",
+                        clearable=False,
                         searchable=True,
+                        optionHeight=40,
                     ),
                     html.P("GICS"),
                     dcc.Dropdown(
                         id="quick-stats-sector-dropdown",
                         options=sector_options,
                         value="0",
+                        clearable=False,
                         searchable=True,
+                        optionHeight=40,
                     ),
                     html.Br(),
                     dcc.Dropdown(
                         id="quick-stats-industry-group-dropdown",
+                        clearable=False,
                         searchable=True,
+                        optionHeight=40,
                     ),
                     html.Br(),
                     dcc.Dropdown(
                         id="quick-stats-industry-dropdown",
+                        clearable=False,
                         searchable=True,
+                        optionHeight=40,
                     ),
                 ],
             ),
-            # generate_section_banner("Select Number of Bins"),
+            generate_section_banner("View"),
             html.Div(
                 id="card-2",
                 children=[
-                    html.P("Number of Bins"),
+                    html.P("Return View Type"),
                     dcc.RadioItems(
-                        id="quick-stats-bins-raioitems",
-                        options=OPTIONS["bins"],
-                        value="10",
-                        inline=True,
+                        id="quick-stats-return-type",
+                        value="exp",
+                        options=OPTIONS["viewtype"],
                     ),
-                ],
-            ),
-            # generate_section_banner("Select Metrics & Statistics"),
-            html.Div(
-                id="card-3",
-                children=[
-                    html.P("Metrics"),
-                    dcc.Dropdown(
-                        id="quick-stats-metrics-dropdown",
-                        options=OPTIONS["metrics"],
-                        value=["monthly_start_high_rtn"],
-                        multi=True,
-                        clearable=False,
-                    ),
-                    html.P("Statistics"),
-                    dcc.Dropdown(
-                        id="quick-stats-statistics-dropdown",
-                        options=OPTIONS["statistics"],
-                        value=["mean"],
-                        multi=True,
-                        clearable=False,
+                    html.P("Bins (Input Type: Arithmetic)"),
+                    dcc.Input(
+                        id="quick-stats-bins",
+                        value="-0.5, -0.4, -0.3, -0.2, -0.1, -0.05",
+                        debounce=True,
+                        placeholder="ex. -0.4, -0.1, -0.01",
                     ),
                 ],
             ),
@@ -302,6 +298,84 @@ def render_quick_stats_industry_dropdown(value):
     return ops, ops[-1]["value"]
 
 
+def is_float(s: str):
+    try:
+        s = float(s)
+        return True
+    except:
+        return False
+
+
+def bins_text_to_list(txt: str, bound: str | None = 'upper'):
+    bns = [float(t) for t in txt.replace(' ', '').split(',') if is_float(t)]
+    if bns == []:
+        return [-np.inf, np.inf]
+    elif bound == 'upper':
+        bns = [v for v in bns if v <=0.] + [-np.inf, 0.]
+        bns = np.sort(np.unique(bns))
+    elif bound == 'lower':
+        bns = [v for v in bns if v >=0.] + [0., np.inf]
+        bns = np.sort(np.unique(bns))
+    else:
+        bns = np.sort(np.unique(np.insert(bns, [0, len(bns)], [-np.inf, np.inf])))
+    return bns.tolist()
+
+
+@app.callback(
+    Output(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
+    Input(component_id="quick-stats-country-dropdown", component_property="value"),
+    Input(component_id="quick-stats-sector-dropdown", component_property="value"),
+    Input(
+        component_id="quick-stats-industry-group-dropdown", component_property="value"
+    ),
+    Input(component_id="quick-stats-industry-dropdown", component_property="value"),
+)
+def filter_meta_data(prid, ctry, stor, itrygrp, itry):
+
+    filtered_meta = meta.copy()
+    filtered_meta = (
+        filtered_meta
+        if ctry == "0"
+        else filtered_meta[filtered_meta["country"] == ctry]
+    )
+    filtered_meta = (
+        filtered_meta
+        if stor == "0"
+        else filtered_meta[filtered_meta["gics_sector"] == stor]
+    )
+    filtered_meta = (
+        filtered_meta
+        if itrygrp == "0"
+        else filtered_meta[filtered_meta["gics_industry_group"] == itrygrp]
+    )
+    filtered_meta = (
+        filtered_meta
+        if itry == "0"
+        else filtered_meta[filtered_meta["gics_industry"] == itry]
+    )
+
+    df = pd.merge(
+        historical[(historical["_year"] >= prid[0]) & (historical["_year"] <= prid[1])],
+        filtered_meta[["_code", "first_include"]],
+        how="inner",
+        on="_code",
+    )
+    if AFTER_INCLUDE_ONLY:
+        df = df[
+            pd.to_datetime(
+                df["_year"].astype(str) + df["_month"].astype(str).str.rjust(2, "0"),
+                format="%Y%m",
+            )
+            >= pd.to_datetime(df["first_include"], format="%Y-%m-%d")
+        ]
+    df = df.sort_values(["_code", "_year", "_month"], ascending=True).reset_index(
+        drop=True
+    )
+
+    return df.to_dict("records")
+
+
 def build_top_panel():
     return html.Div(
         id="top-section-container",
@@ -312,8 +386,35 @@ def build_top_panel():
                 id="metric-summary-session",
                 className="nine columns",
                 children=[
-                    generate_section_banner("Bar Chart"),
-                    dcc.Graph(id="eda-bar-chart"),
+                    generate_section_banner("Simple Analysis - Bar Chart"),
+                    html.Div(
+                        id="eda-bar-chart-dropdowns",
+                        children=[
+                            generate_little_banner("Statistic | "),
+                            dcc.Dropdown(
+                                id = "eda-bar-chart-dropdown1",
+                                options=OPTIONS["statistics"],
+                                value="mean",
+                                clearable=False,
+                                searchable=True,
+                                placeholder="Select Group Statistic",
+                                optionHeight=40,
+                            ),
+                            generate_little_banner("| Metric (Sub) | "),
+                            dcc.Dropdown(
+                                id = "eda-bar-chart-dropdown2",
+                                options=OPTIONS["metrics"],
+                                value="1mf_monthly_rtn",
+                                clearable=False,
+                                searchable=True,
+                                placeholder="Select SubMetric",
+                                optionHeight=60,
+                            ),
+                        ]
+                    ),
+                    dcc.Loading(
+                        children=[dcc.Graph(id="eda-bar-chart")],
+                    ),
                 ],
             ),
             html.Div(
@@ -321,7 +422,9 @@ def build_top_panel():
                 className="three columns",
                 children=[
                     generate_section_banner("Count"),
-                    html.Table(id="count-table"),
+                    dcc.Loading(
+                        children=[html.Table(id="count-table")],
+                    ),
                 ],
             ),
         ],
@@ -334,18 +437,70 @@ def build_chart_panel():
         className="row",
         children=[
             html.Div(
-                id="distplot-session",
+                id="tsplot-session",
                 className="six columns",
                 children=[
-                    generate_section_banner("KDE Plot"),
-                    dcc.Graph(id="eda-distplot"),
+                    generate_section_banner("Monthly Historical Analysis - Line Chart"),
+                    html.Div(
+                        id="eda-ts-chart-dropdowns",
+                        children=[
+                            generate_little_banner("Metric | "),
+                            dcc.Dropdown(
+                                id="eda-ts-chart-dropdown1",
+                                options=OPTIONS["metrics"],
+                                value="1mf_monthly_start_high_rtn",
+                                clearable=False,
+                                searchable=True,
+                                placeholder="Select Metric",
+                                optionHeight=60,
+                            ),
+                        ]
+                    ),
+                    dcc.Loading(
+                        children=[dcc.Graph(id="eda-tsplot")],
+                    ),
                 ],
             ),
             html.Div(
-                id="not-yet",
+                id="heatmap-session",
                 className="six columns",
                 children=[
-                    generate_section_banner("-"),
+                    generate_section_banner("Metrics CrossTab - Heatmap"),
+                    html.Div(
+                        id="eda-heatmap-dropdowns",
+                        children=[
+                            dcc.Dropdown(
+                                id="eda-heatmap-dropdown1",
+                                options=OPTIONS["metrics"],
+                                value="monthly_start_high_rtn",
+                                clearable=False,
+                                searchable=True,
+                                placeholder="Select SubMetric",
+                                optionHeight=60,
+                            ),
+                            dcc.Input(
+                                id="eda-heatmap-text1",
+                                value="0.05, 0.1, 0.2, 0.3, 0.4, 0.5",
+                                debounce=True,
+                                placeholder="ex. 0.01, 0.1, 0.4",
+                            ),
+                            generate_little_banner(" Y "),
+                            generate_little_banner("|"),
+                            generate_little_banner(" Z "),
+                            dcc.Dropdown(
+                                id="eda-heatmap-dropdown2",
+                                options=OPTIONS["metrics"],
+                                value="1mf_monthly_start_high_rtn",
+                                clearable=False,
+                                searchable=True,
+                                placeholder="Select SubMetric",
+                                optionHeight=60,
+                            ),
+                        ]
+                    ),
+                    dcc.Loading(
+                        children=[dcc.Graph(id="eda-heatmap")],
+                    ),
                 ],
             ),
         ],
@@ -354,108 +509,79 @@ def build_chart_panel():
 
 @app.callback(
     Output(component_id="eda-bar-chart", component_property="figure"),
-    Output(component_id="count-table", component_property="children"),
-    Output(component_id="eda-distplot", component_property="figure"),
-    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
-    Input(component_id="quick-stats-country-dropdown", component_property="value"),
-    Input(component_id="quick-stats-sector-dropdown", component_property="value"),
+    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-return-type", component_property="value"),
+    Input(component_id="quick-stats-bins", component_property="value"),
+    Input(component_id="eda-bar-chart-dropdown2", component_property="value"),
     Input(
-        component_id="quick-stats-industry-group-dropdown", component_property="value"
+        component_id="eda-bar-chart-dropdown1", component_property="value"
     ),
-    Input(component_id="quick-stats-industry-dropdown", component_property="value"),
-    Input(component_id="quick-stats-bins-raioitems", component_property="value"),
-    [Input(component_id="quick-stats-metrics-dropdown", component_property="value")],
-    [Input(component_id="quick-stats-statistics-dropdown", component_property="value")],
 )
-def rendor_eda_bar_chart(vp, vc, vs, vig, vi, vb, vm, vst):
+def rendor_eda_bar_chart(hdata, tpe:str, bns: str, mtrc: str, stt: str):
 
-    # Filtering
+    mtrcs = ["1mf_monthly_start_high_rtn", mtrc]
+    use_cols = [
+        "_code",
+        "_year",
+        "_month",
+        "monthly_high_end_rtn",
+        "monthly_start_high_rtn",
+    ]
+    if mtrc.replace("1mf_", "") not in ["monthly_high_end_rtn", "monthly_start_high_rtn"]:
+        use_cols += [mtrc.replace("1mf_", "")]
 
-    if vm == []:
-        vm = ["monthly_start_high_rtn"]
-    if vst == []:
-        vst = ["mean"]
+    df = pd.DataFrame.from_records(hdata)[use_cols]
 
-    filtered_meta = meta
-    filtered_meta = (
-        filtered_meta if vc == "0" else filtered_meta[filtered_meta["country"] == vc]
+    df = (
+        pd.concat(
+            [
+                df,
+                df.groupby("_code", as_index=False)
+                .shift(-1)
+                .rename(columns={c: "1mf_" + c for c in df.columns}),
+            ],
+            axis=1,
+        )
+        .dropna()
+        .reset_index(drop=True)
     )
-    filtered_meta = (
-        filtered_meta
-        if vs == "0"
-        else filtered_meta[filtered_meta["gics_sector"] == vs]
-    )
-    filtered_meta = (
-        filtered_meta
-        if vig == "0"
-        else filtered_meta[filtered_meta["gics_industry_group"] == vig]
-    )
-    filtered_meta = (
-        filtered_meta
-        if vi == "0"
-        else filtered_meta[filtered_meta["gics_industry"] == vi]
-    )
-    df = pd.merge(
-        historical[(historical["_year"] >= vp[0]) & (historical["_year"] <= vp[1])],
-        filtered_meta,
-        how="inner",
-        on="_code",
-    )
-
-    if AFTER_INCLUDE_ONLY:
-        df = df[
-            pd.to_datetime(
-                df["_year"].astype(str) + df["_month"].astype(str).str.rjust(2, "0"),
-                format="%Y%m",
-            )
-            >= df["first_include"]
-        ]
-
-    bs = BINS[vb]
+    bs = bins_text_to_list(bns)
     colors = [ORANGES[int(cl)] for cl in np.linspace(0, len(ORANGES) - 1, len(bs))]
     lbls = [f"({bs[i-1]}, {bs[i]}]" for i, _ in enumerate(bs) if i > 0]
 
-    df = df.sort_values(["_code", "_year", "_month"], ascending=True).reset_index(
-        drop=True
-    )
-
     df["monthly_high_end_rtn_category"] = pd.cut(
-        df["monthly_high_end_rtn"], bins=bs, labels=lbls
+        np.exp(df["monthly_high_end_rtn"])-1., bins=bs, labels=lbls
     ).astype(str)
-    df["before_monthly_high_end_rtn"] = df.groupby("_code", as_index=False)[
-        "monthly_high_end_rtn"
-    ].shift(1)
-    df["before_monthly_high_end_rtn_category"] = df.groupby("_code", as_index=False)[
-        "monthly_high_end_rtn_category"
-    ].shift(1)
 
     # Make Bar Chart
 
-    df_result = df.groupby("before_monthly_high_end_rtn_category")[vm].agg(vst)
+    if tpe == 'exp':
+        df[mtrcs] = np.exp(df[mtrcs]) - 1.
+    df = df.groupby("monthly_high_end_rtn_category")[mtrcs].agg(stt)
 
     m_titles = {d["value"]: d["label"] for d in OPTIONS["metrics"]}
     st_titles = {d["value"]: d["label"] for d in OPTIONS["statistics"]}
 
     fig = make_subplots(
-        rows=len(vst),
-        cols=len(vm),
+        rows=1,
+        cols=2,
         start_cell="top-left",
-        subplot_titles=[f"{m_titles[m]} - {st_titles[st]}" for st in vst for m in vm],
+        subplot_titles=[f"{m_titles[m]} - {st_titles[stt]}" for m in mtrcs],
     )
 
-    for midx, m in enumerate(vm):
-        for stidx, st in enumerate(vst):
-            fig.add_trace(
-                go.Bar(
-                    y=df_result[(m, st)],
-                    x=df_result[(m, st)].index,
-                    marker={
-                        "color": colors,
-                    },
-                ),
-                row=stidx + 1,
-                col=midx + 1,
-            )
+    for midx, m in enumerate(mtrcs):
+        fig.add_trace(
+            go.Bar(
+                y=df[m],
+                x=df[m].index,
+                marker={
+                    "color": colors,
+                },
+                name=m_titles[m],
+            ),
+            row=1,
+            col=midx + 1,
+        )
 
     fig.for_each_xaxis(
         lambda x: x.update(showline=False, showgrid=False, zeroline=False)
@@ -468,15 +594,48 @@ def rendor_eda_bar_chart(vp, vc, vs, vig, vi, vb, vm, vst):
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         autosize=True,
-        margin=dict(t=50, r=10, b=30, l=10),
+        margin=dict(t=30, r=10, b=30, l=10),
         showlegend=False,
         font=dict(color="rgba(255,255,255,255)"),
     )
 
-    # Make Table
+    return fig
+
+
+@app.callback(
+    Output(component_id="count-table", component_property="children"),
+    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-bins", component_property="value"),
+)
+def rendor_count_table(hdata, bns):
+
+    df = pd.DataFrame.from_records(hdata)[
+        ["_code", "_year", "_month", "monthly_high_end_rtn"]
+    ]
+
+    df = (
+        pd.concat(
+            [
+                df,
+                df.groupby("_code", as_index=False)
+                .shift(-1)
+                .rename(columns={c: "1mf_" + c for c in df.columns}),
+            ],
+            axis=1,
+        )
+        .dropna()
+        .reset_index(drop=True)
+    )
+
+    bs = bins_text_to_list(bns)
+    lbls = [f"({bs[i-1]}, {bs[i]}]" for i, _ in enumerate(bs) if i > 0]
+
+    df["monthly_high_end_rtn_category"] = pd.cut(
+        np.exp(df["monthly_high_end_rtn"])-1., bins=bs, labels=lbls
+    ).astype(str)
 
     df_count = (
-        df.groupby("before_monthly_high_end_rtn_category")["monthly_start_high_rtn"]
+        df.groupby("monthly_high_end_rtn_category")["monthly_high_end_rtn"]
         .count()
         .reset_index(drop=False)
     )
@@ -497,40 +656,221 @@ def rendor_eda_bar_chart(vp, vc, vs, vig, vi, vb, vm, vst):
             html_row.append(html.Td([row.iloc[i]]))
         table.append(html.Tr(html_row))
 
-    # Make KDE Plot
+    return table
 
-    fig2 = ff.create_distplot(
-        [
-            df[df["before_monthly_high_end_rtn_category"] == l][vm[0]]
-            for l in reversed(lbls)
-        ],
-        [l for l in reversed(lbls)],
-        show_hist=False,
-        colors=colors,
-        show_rug=False,
-        histnorm="probability",
-    )
 
-    fig2.update_xaxes(showgrid=False, range=METRICS_VISUAL_RANGE[vm[0]])
-    fig2.update_yaxes(
-        showgrid=False,
-    )
+@app.callback(
+    Output(component_id="eda-tsplot", component_property="figure"),
+    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-return-type", component_property="value"),
+    Input(component_id="quick-stats-bins", component_property="value"),
+    Input(component_id="eda-ts-chart-dropdown1", component_property="value"),
+)
+def rendor_ts_chart(hdata, tpe:str, bns: str, mtrc: str):
 
-    fig2.update_layout(
+    use_cols = [
+        "_code",
+        "_year",
+        "_month",
+        "monthly_high_end_rtn",
+    ]
+
+    if mtrc.replace("1mf_", "") != "monthly_high_end_rtn":
+        use_cols += [mtrc.replace("1mf_", "")]
+
+    df = pd.DataFrame.from_records(hdata)[use_cols]
+
+    df = pd.concat([df, 
+                    df.groupby("_code", as_index=False).shift(-1).rename(columns={c: "1mf_" + c for c in df.columns})],
+                    axis=1,).dropna().reset_index(drop=True)
+
+    bs = bins_text_to_list(bns)
+    colors = [ORANGES[int(cl)] for cl in np.linspace(0, len(ORANGES) - 1, len(bs)+1)]
+    lbls = [f"({bs[i-1]}, {bs[i]}]" for i, _ in enumerate(bs) if i > 0]
+
+    df["monthly_high_end_rtn_category"] = pd.cut(
+        np.exp(df["monthly_high_end_rtn"])-1., bins=bs, labels=lbls
+    ).astype(str)
+
+    df['ym'] = pd.to_datetime(df["_year"].astype(str) + df["_month"].astype(str).str.rjust(2, "0"), format="%Y%m")
+
+    # Make TS Chart
+
+    if tpe == 'exp':
+        df[mtrc] = np.exp(df[mtrc]) - 1.
+
+    m_titles = {d["value"]: d["label"] for d in OPTIONS["metrics"]}
+
+    total_grp = df.groupby(['ym'], as_index=False
+                           )[mtrc].agg(['count', 'mean', 'std', 'median', 'min', 'max'])
+    total_grp['monthly_high_end_rtn_category'] = 'All'
+    bins_grp = df.groupby(['monthly_high_end_rtn_category', 'ym'], as_index=False
+                          )[mtrc].agg(['count', 'mean', 'std', 'median', 'min', 'max'])
+    grp = pd.concat([total_grp, bins_grp]).reset_index(drop=True).fillna(0)
+
+    fig = px.line(grp, x="ym", y="mean", color="monthly_high_end_rtn_category",
+              markers=True,
+              color_discrete_sequence=colors,
+              hover_name="monthly_high_end_rtn_category",
+              hover_data={'monthly_high_end_rtn_category': False,
+                          'ym': False,
+                          'count': True,
+                          'mean': ':.4f',
+                          'median': ':.4f',
+                          'std': ':.4f'},)
+    fig.update_traces(marker={'size': 5})
+    fig.update_xaxes(title="Time", showline=False, showgrid=False, zeroline=False)
+    fig.update_yaxes(title=f"{m_titles[mtrc]} - Mean", 
+                     showline=False, 
+                     showgrid=False, 
+                     zeroline=False,)
+
+    fig.update_layout(
         paper_bgcolor="rgba(0,0,0,0)",
         plot_bgcolor="rgba(0,0,0,0)",
         autosize=True,
-        margin=dict(t=50, r=10, b=30, l=10),
-        showlegend=True,
+        margin=dict(t=30, r=10, b=30, l=10),
+        showlegend=False,
         font=dict(color="rgba(255,255,255,255)"),
     )
 
-    return fig, table, fig2
+    return fig
 
 
 app.layout = html.Div(
     id="big-app-container",
     children=[
+        dcc.Store(id="historical-data"),
+        build_banner(),
+        html.Div(
+            id="app-container",
+            children=[
+                build_tabs(),
+                html.Div(id="app-content"),
+            ],
+        ),
+        generate_modal(),
+    ],
+)
+
+
+@app.callback(
+    Output(component_id="eda-heatmap", component_property="figure"),
+    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-return-type", component_property="value"),
+    Input(component_id="quick-stats-bins", component_property="value"),
+    Input(component_id="eda-heatmap-dropdown1", component_property="value"),
+    Input(component_id="eda-heatmap-text1", component_property="value"),
+    Input(component_id="eda-heatmap-dropdown2", component_property="value"),
+)
+def rendor_heatmap(hdata, tpe:str, bns: str, yv: str, ybns: str, zv: str):
+
+    use_cols = [
+        "_code",
+        "_year",
+        "_month",
+        "monthly_high_end_rtn",
+    ]
+
+    if yv.replace("1mf_", "") != "monthly_high_end_rtn":
+        use_cols += [yv.replace("1mf_", "")]
+    if zv.replace("1mf_", "") not in ["monthly_high_end_rtn", yv.replace("1mf_", "")]:
+        use_cols += [zv.replace("1mf_", "")]
+    df = pd.DataFrame.from_records(hdata)[use_cols]
+
+    df = pd.concat([df, 
+                    df.groupby("_code", as_index=False).shift(-1).rename(columns={c: "1mf_" + c for c in df.columns})],
+                    axis=1,).dropna().reset_index(drop=True)
+
+    bs = bins_text_to_list(bns)
+    lbls = [f"({bs[i-1]}, {bs[i]}]" for i, _ in enumerate(bs) if i > 0]
+    df["monthly_high_end_rtn_category"] = pd.cut(
+        np.exp(df["monthly_high_end_rtn"])-1., bins=bs, labels=lbls
+    ).astype(str)
+
+    bound = None
+    if (df[yv] >= 0.).all():
+        bound = "lower"
+    elif (df[yv] <= 0.).all():
+        bound = "upper"
+    ybs = bins_text_to_list(ybns, bound)
+
+    if bound == "lower":
+        rgt = False
+        ylbls = [f"[{ybs[i-1]}, {ybs[i]})" for i, _ in enumerate(ybs) if i > 0]
+    else:
+        rgt = True
+        ylbls = [f"({ybs[i-1]}, {ybs[i]}]" for i, _ in enumerate(ybs) if i > 0]
+    df[f"{yv}_category"] = pd.cut(
+        np.exp(df[yv])-1., bins=ybs, labels=ylbls, right=rgt,
+    ).astype(str)
+
+    df['ym'] = pd.to_datetime(df["_year"].astype(str) + df["_month"].astype(str).str.rjust(2, "0"), format="%Y%m")
+
+    if tpe == 'exp':
+        df[zv] = np.exp(df[zv]) - 1.
+
+    m_titles = {d["value"]: d["label"] for d in OPTIONS["metrics"]}
+
+    ctmean = pd.crosstab(
+        df[f"{yv}_category"], 
+        df['monthly_high_end_rtn_category'], 
+        df[zv], 
+        aggfunc='mean'
+    )
+
+    ctcount = pd.crosstab(
+        df[f"{yv}_category"], 
+        df['monthly_high_end_rtn_category'], 
+        df[zv], 
+        aggfunc='count'
+    ).to_numpy()
+
+    ctmedian = pd.crosstab(
+        df[f"{yv}_category"], 
+        df['monthly_high_end_rtn_category'], 
+        df[zv], 
+        aggfunc='median'
+    ).to_numpy()
+
+    ctstd = pd.crosstab(
+        df[f"{yv}_category"], 
+        df['monthly_high_end_rtn_category'], 
+        df[zv], 
+        aggfunc='std'
+    ).fillna(0.).to_numpy()
+
+    fig = go.Figure(
+        data=go.Heatmap(
+            name="mean",
+            z=ctmean.values,
+            x=ctmean.columns,
+            y=ctmean.index,
+            colorscale='Blues',
+            customdata=np.dstack((ctcount, ctmedian, ctstd)),
+            hovertemplate='%{z:.4f}<br>count: %{customdata[0]:.4f}<br>median: %{customdata[1]:.4f}<br>std: %{customdata[2]:.4f}',
+            hoverongaps = False,
+        ))
+    
+    fig.update_xaxes(title=f"{m_titles['monthly_high_end_rtn']}")
+    fig.update_yaxes(title=f"{m_titles[yv]}")
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        autosize=True,
+        margin=dict(t=30, r=5, b=30, l=10),
+        showlegend=False,
+        font=dict(color="rgba(255,255,255,255)"),
+    )
+
+    return fig
+
+
+app.layout = html.Div(
+    id="big-app-container",
+    children=[
+        dcc.Store(id="historical-data"),
         build_banner(),
         html.Div(
             id="app-container",
@@ -562,22 +902,6 @@ def render_tab_content(tab_switch):
                 ),
             ],
         )
-
-
-# ======= Callbacks for modal popup =======
-@app.callback(
-    Output("markdown", "style"),
-    [Input("learn-more-button", "n_clicks"), Input("markdown_close", "n_clicks")],
-)
-def update_click_output(button_click, close_click):
-    ctx = dash.callback_context
-
-    if ctx.triggered:
-        prop_id = ctx.triggered[0]["prop_id"].split(".")[0]
-        if prop_id == "learn-more-button":
-            return {"display": "block"}
-
-    return {"display": "none"}
 
 
 # Running the server

@@ -173,6 +173,15 @@ body {
   margin-left: 3px;
 }
 
+.little-banner {
+  color: darkgray;
+  font-size: 1.5rem;
+  text-align: left;
+  text-justify: center;
+  align-items: center;
+  padding: 1.5rem 1rem;
+}
+
 .section-banner {
   color: darkgray;
   font-size: 1.5rem;
@@ -190,6 +199,69 @@ body {
   display: flex;
   max-width: 100%;
   /*width: 100%;*/
+}
+
+#eda-bar-chart-dropdowns {
+  height: auto;
+  flex-direction: row;
+  display: flex;
+  justify-content: left;
+  /*width: 100%;*/
+}
+
+#eda-ts-chart-dropdowns {
+  height: auto;
+  flex-direction: row;
+  display: flex;
+  justify-content: left;
+  /*width: 100%;*/
+}
+
+#eda-heatmap-dropdowns {
+  height: auto;
+  flex-direction: row;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  /*width: 100%;*/
+}
+
+#eda-bar-chart-dropdown1 {
+  width: 15%;
+  margin: 1rem;
+  display: inline-block;
+}
+
+#eda-bar-chart-dropdown2 {
+  width: 35%;
+  margin: 1rem;
+  display: inline-block;
+}
+
+#eda-ts-chart-dropdown1 {
+  width: 45%;
+  margin: 1rem;
+  display: inline-block;
+}
+
+#eda-heatmap-dropdown1 {
+  width: 30%;
+  margin: 1rem;
+  display: inline-block;
+}
+
+#eda-heatmap-text1 {
+  width: 20%;
+  margin: 1rem;
+  background-color: #242633;
+  border: 1px solid darkgray !important;
+  color: white;
+}
+
+#eda-heatmap-dropdown2 {
+  width: 30%;
+  margin: 1rem;
+  display: inline-block;
 }
 
 #metric_header > div {
@@ -392,8 +464,8 @@ body {
   display: flex;
   flex-direction: column;
   flex: 3 1;
-  max-width: calc(75%);
-  width: 70%;
+  max-width: calc(80%);
+  width: 75%;
 }
 
 
@@ -407,11 +479,51 @@ body {
   border-right: #1E2130 solid 0.8rem;
   flex: 1 1 0;
   padding: 0;
-  max-width: 25%;
+  max-width: 20%;
 }
 
-#quick-stats-period-rangeslider, #quick-stats-country-dropdown, #quick-stats-sector-dropdown, #quick-stats-industry-group-dropdown, #quick-stats-industry-dropdown, #quick-stats-bins-raioitems, #quick-stats-metrics-dropdown, #quick-stats-statistics-dropdown {
-  width: 90%
+#quick-stats-period-rangeslider, 
+#quick-stats-country-dropdown, 
+#quick-stats-sector-dropdown, 
+#quick-stats-industry-group-dropdown, 
+#quick-stats-industry-dropdown, 
+#quick-stats-return-type,
+#quick-stats-bins, 
+#quick-stats-sa-metrics-dropdown, 
+#quick-stats-sa-statistics-dropdown,
+#quick-stats-ts-metrics-dropdown, 
+#quick-stats-ts-statistics-dropdown,
+#quick-stats-hm-metrics-dropdown, 
+#quick-stats-hm-bins {
+  width: 90%;
+}
+
+#quick-stats-country-dropdown, 
+#quick-stats-sector-dropdown, 
+#quick-stats-industry-group-dropdown, 
+#quick-stats-industry-dropdown, 
+#quick-stats-sa-metrics-dropdown, 
+#quick-stats-sa-statistics-dropdown,
+#quick-stats-ts-metrics-dropdown, 
+#quick-stats-ts-statistics-dropdown,
+#quick-stats-hm-metrics-dropdown {
+  display: inline-block;
+}
+
+#quick-stats-return-type {
+  align-items: center;
+}
+
+#quick-stats-bins {
+  background-color: #242633;
+  border: 1px solid darkgray !important;
+  color: white;
+}
+
+#quick-stats-hm-bins {
+  background-color: #242633;
+  border: 1px solid darkgray !important;
+  color: white;
 }
 
 /*pressure-gauge track*/
