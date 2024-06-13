@@ -321,16 +321,6 @@ def bins_text_to_list(txt: str, bound: str | None = 'upper'):
     return bns.tolist()
 
 
-@app.callback(
-    Output(component_id="historical-data", component_property="data"),
-    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
-    Input(component_id="quick-stats-country-dropdown", component_property="value"),
-    Input(component_id="quick-stats-sector-dropdown", component_property="value"),
-    Input(
-        component_id="quick-stats-industry-group-dropdown", component_property="value"
-    ),
-    Input(component_id="quick-stats-industry-dropdown", component_property="value"),
-)
 def filter_meta_data(prid, ctry, stor, itrygrp, itry):
 
     filtered_meta = meta.copy()
@@ -373,7 +363,7 @@ def filter_meta_data(prid, ctry, stor, itrygrp, itry):
         drop=True
     )
 
-    return df.to_dict("records")
+    return df
 
 
 def build_top_panel():
@@ -507,54 +497,60 @@ def build_chart_panel():
     )
 
 
-def build_dist_panel():
-    return html.Div(
-        id="dist-section-container",
-        className="row",
-        children=[
-            # 8width graph
-            html.Div(
-                id="dist-session",
-                className="nine columns",
-                children=[
-                    generate_section_banner("Distribution Plot"),
-                    html.Div(
-                        id="eda-dist-dropdowns",
-                        children=[
-                            generate_little_banner("Metric | "),
-                            dcc.Dropdown(
-                                id = "eda-dist-dropdown1",
-                                options=OPTIONS["metrics"],
-                                value="1mf_monthly_rtn",
-                                clearable=False,
-                                searchable=True,
-                                placeholder="Select Metric",
-                                optionHeight=60,
-                            ),
-                        ]
-                    ),
-                    # dcc.Loading(
-                    #     children=[dcc.Graph(id="eda-bar-chart")],
-                    # ),
-                ],
-            ),
-            # html.Div(
-            #     id="count-summary-session",
-            #     className="three columns",
-            #     children=[
-            #         generate_section_banner("Count"),
-            #         dcc.Loading(
-            #             children=[html.Table(id="count-table")],
-            #         ),
-            #     ],
-            # ),
-        ],
-    )
+# def build_dist_panel():
+#     return html.Div(
+#         id="dist-section-container",
+#         className="row",
+#         children=[
+#             # 8width graph
+#             html.Div(
+#                 id="dist-session",
+#                 className="nine columns",
+#                 children=[
+#                     generate_section_banner("Distribution Plot"),
+#                     html.Div(
+#                         id="eda-dist-dropdowns",
+#                         children=[
+#                             generate_little_banner("Metric | "),
+#                             dcc.Dropdown(
+#                                 id = "eda-dist-dropdown1",
+#                                 options=OPTIONS["metrics"],
+#                                 value="1mf_monthly_rtn",
+#                                 clearable=False,
+#                                 searchable=True,
+#                                 placeholder="Select Metric",
+#                                 optionHeight=60,
+#                             ),
+#                         ]
+#                     ),
+#                     # dcc.Loading(
+#                     #     children=[dcc.Graph(id="eda-bar-chart")],
+#                     # ),
+#                 ],
+#             ),
+#             # html.Div(
+#             #     id="count-summary-session",
+#             #     className="three columns",
+#             #     children=[
+#             #         generate_section_banner("Count"),
+#             #         dcc.Loading(
+#             #             children=[html.Table(id="count-table")],
+#             #         ),
+#             #     ],
+#             # ),
+#         ],
+#     )
 
 
 @app.callback(
     Output(component_id="eda-bar-chart", component_property="figure"),
-    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
+    Input(component_id="quick-stats-country-dropdown", component_property="value"),
+    Input(component_id="quick-stats-sector-dropdown", component_property="value"),
+    Input(
+        component_id="quick-stats-industry-group-dropdown", component_property="value"
+    ),
+    Input(component_id="quick-stats-industry-dropdown", component_property="value"),
     Input(component_id="quick-stats-return-type", component_property="value"),
     Input(component_id="quick-stats-bins", component_property="value"),
     Input(component_id="eda-bar-chart-dropdown2", component_property="value"),
@@ -562,7 +558,7 @@ def build_dist_panel():
         component_id="eda-bar-chart-dropdown1", component_property="value"
     ),
 )
-def rendor_eda_bar_chart(hdata, tpe:str, bns: str, mtrc: str, stt: str):
+def rendor_eda_bar_chart(prid, ctry, stor, itrygrp, itry, tpe:str, bns: str, mtrc: str, stt: str):
 
     mtrcs = ["1mf_monthly_start_high_rtn", mtrc]
     use_cols = [
@@ -575,7 +571,7 @@ def rendor_eda_bar_chart(hdata, tpe:str, bns: str, mtrc: str, stt: str):
     if mtrc.replace("1mf_", "") not in ["monthly_high_end_rtn", "monthly_start_high_rtn"]:
         use_cols += [mtrc.replace("1mf_", "")]
 
-    df = pd.DataFrame.from_records(hdata)[use_cols]
+    df = filter_meta_data(prid, ctry, stor, itrygrp, itry)[use_cols]
 
     df = (
         pd.concat(
@@ -649,12 +645,18 @@ def rendor_eda_bar_chart(hdata, tpe:str, bns: str, mtrc: str, stt: str):
 
 @app.callback(
     Output(component_id="count-table", component_property="children"),
-    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
+    Input(component_id="quick-stats-country-dropdown", component_property="value"),
+    Input(component_id="quick-stats-sector-dropdown", component_property="value"),
+    Input(
+        component_id="quick-stats-industry-group-dropdown", component_property="value"
+    ),
+    Input(component_id="quick-stats-industry-dropdown", component_property="value"),
     Input(component_id="quick-stats-bins", component_property="value"),
 )
-def rendor_count_table(hdata, bns):
+def rendor_count_table(prid, ctry, stor, itrygrp, itry, bns):
 
-    df = pd.DataFrame.from_records(hdata)[
+    df = filter_meta_data(prid, ctry, stor, itrygrp, itry)[
         ["_code", "_year", "_month", "monthly_high_end_rtn"]
     ]
 
@@ -706,12 +708,18 @@ def rendor_count_table(hdata, bns):
 
 @app.callback(
     Output(component_id="eda-tsplot", component_property="figure"),
-    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
+    Input(component_id="quick-stats-country-dropdown", component_property="value"),
+    Input(component_id="quick-stats-sector-dropdown", component_property="value"),
+    Input(
+        component_id="quick-stats-industry-group-dropdown", component_property="value"
+    ),
+    Input(component_id="quick-stats-industry-dropdown", component_property="value"),
     Input(component_id="quick-stats-return-type", component_property="value"),
     Input(component_id="quick-stats-bins", component_property="value"),
     Input(component_id="eda-ts-chart-dropdown1", component_property="value"),
 )
-def rendor_ts_chart(hdata, tpe:str, bns: str, mtrc: str):
+def rendor_ts_chart(prid, ctry, stor, itrygrp, itry, tpe:str, bns: str, mtrc: str):
 
     use_cols = [
         "_code",
@@ -723,7 +731,7 @@ def rendor_ts_chart(hdata, tpe:str, bns: str, mtrc: str):
     if mtrc.replace("1mf_", "") != "monthly_high_end_rtn":
         use_cols += [mtrc.replace("1mf_", "")]
 
-    df = pd.DataFrame.from_records(hdata)[use_cols]
+    df = filter_meta_data(prid, ctry, stor, itrygrp, itry)[use_cols]
 
     df = pd.concat([df, 
                     df.groupby("_code", as_index=False).shift(-1).rename(columns={c: "1mf_" + c for c in df.columns})],
@@ -801,14 +809,20 @@ app.layout = html.Div(
 
 @app.callback(
     Output(component_id="eda-heatmap", component_property="figure"),
-    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-period-rangeslider", component_property="value"),
+    Input(component_id="quick-stats-country-dropdown", component_property="value"),
+    Input(component_id="quick-stats-sector-dropdown", component_property="value"),
+    Input(
+        component_id="quick-stats-industry-group-dropdown", component_property="value"
+    ),
+    Input(component_id="quick-stats-industry-dropdown", component_property="value"),
     Input(component_id="quick-stats-return-type", component_property="value"),
     Input(component_id="quick-stats-bins", component_property="value"),
     Input(component_id="eda-heatmap-dropdown1", component_property="value"),
     Input(component_id="eda-heatmap-text1", component_property="value"),
     Input(component_id="eda-heatmap-dropdown2", component_property="value"),
 )
-def rendor_heatmap(hdata, tpe:str, bns: str, yv: str, ybns: str, zv: str):
+def rendor_heatmap(prid, ctry, stor, itrygrp, itry, tpe:str, bns: str, yv: str, ybns: str, zv: str):
 
     use_cols = [
         "_code",
@@ -821,7 +835,7 @@ def rendor_heatmap(hdata, tpe:str, bns: str, yv: str, ybns: str, zv: str):
         use_cols += [yv.replace("1mf_", "")]
     if zv.replace("1mf_", "") not in ["monthly_high_end_rtn", yv.replace("1mf_", "")]:
         use_cols += [zv.replace("1mf_", "")]
-    df = pd.DataFrame.from_records(hdata)[use_cols]
+    df = filter_meta_data(prid, ctry, stor, itrygrp, itry)[use_cols]
 
     df = pd.concat([df, 
                     df.groupby("_code", as_index=False).shift(-1).rename(columns={c: "1mf_" + c for c in df.columns})],
@@ -1010,7 +1024,7 @@ def rendor_dist_plot(hdata, tpe:str, bns: str, mtrc: str, stt: str):
 app.layout = html.Div(
     id="big-app-container",
     children=[
-        dcc.Store(id="historical-data"),
+        # dcc.Store(id="historical-data"),
         build_banner(),
         html.Div(
             id="app-container",
@@ -1038,7 +1052,7 @@ def render_tab_content(tab_switch):
                 build_quick_stats_panel(),
                 html.Div(
                     id="graphs-container",
-                    children=[build_top_panel(), build_chart_panel(), build_dist_panel()],
+                    children=[build_top_panel(), build_chart_panel(),], # build_dist_panel()],
                 ),
             ],
         )
