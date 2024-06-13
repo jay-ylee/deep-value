@@ -252,7 +252,7 @@ def build_quick_stats_panel():
                     html.P("Bins (Input Type: Arithmetic)"),
                     dcc.Input(
                         id="quick-stats-bins",
-                        value="-0.5, -0.4, -0.3, -0.2, -0.1, -0.05",
+                        value="-0.4, -0.3, -0.2, -0.1, -0.05",
                         debounce=True,
                         placeholder="ex. -0.4, -0.1, -0.01",
                     ),
@@ -480,7 +480,7 @@ def build_chart_panel():
                             ),
                             dcc.Input(
                                 id="eda-heatmap-text1",
-                                value="0.05, 0.1, 0.2, 0.3, 0.4, 0.5",
+                                value="0.05, 0.1, 0.2, 0.3, 0.4",
                                 debounce=True,
                                 placeholder="ex. 0.01, 0.1, 0.4",
                             ),
@@ -503,6 +503,51 @@ def build_chart_panel():
                     ),
                 ],
             ),
+        ],
+    )
+
+
+def build_dist_panel():
+    return html.Div(
+        id="dist-section-container",
+        className="row",
+        children=[
+            # 8width graph
+            html.Div(
+                id="dist-session",
+                className="nine columns",
+                children=[
+                    generate_section_banner("Distribution Plot"),
+                    html.Div(
+                        id="eda-dist-dropdowns",
+                        children=[
+                            generate_little_banner("Metric | "),
+                            dcc.Dropdown(
+                                id = "eda-dist-dropdown1",
+                                options=OPTIONS["metrics"],
+                                value="1mf_monthly_rtn",
+                                clearable=False,
+                                searchable=True,
+                                placeholder="Select Metric",
+                                optionHeight=60,
+                            ),
+                        ]
+                    ),
+                    # dcc.Loading(
+                    #     children=[dcc.Graph(id="eda-bar-chart")],
+                    # ),
+                ],
+            ),
+            # html.Div(
+            #     id="count-summary-session",
+            #     className="three columns",
+            #     children=[
+            #         generate_section_banner("Count"),
+            #         dcc.Loading(
+            #             children=[html.Table(id="count-table")],
+            #         ),
+            #     ],
+            # ),
         ],
     )
 
@@ -867,6 +912,101 @@ def rendor_heatmap(hdata, tpe:str, bns: str, yv: str, ybns: str, zv: str):
     return fig
 
 
+@app.callback(
+    Output(component_id="eda-dist-plot", component_property="figure"),
+    Input(component_id="historical-data", component_property="data"),
+    Input(component_id="quick-stats-return-type", component_property="value"),
+    Input(component_id="quick-stats-bins", component_property="value"),
+    Input(component_id="eda-bar-chart-dropdown2", component_property="value"),
+    Input(
+        component_id="eda-bar-chart-dropdown1", component_property="value"
+    ),
+)
+def rendor_dist_plot(hdata, tpe:str, bns: str, mtrc: str, stt: str):
+
+    mtrcs = ["1mf_monthly_start_high_rtn", mtrc]
+    use_cols = [
+        "_code",
+        "_year",
+        "_month",
+        "monthly_high_end_rtn",
+        "monthly_start_high_rtn",
+    ]
+    if mtrc.replace("1mf_", "") not in ["monthly_high_end_rtn", "monthly_start_high_rtn"]:
+        use_cols += [mtrc.replace("1mf_", "")]
+
+    df = pd.DataFrame.from_records(hdata)[use_cols]
+
+    df = (
+        pd.concat(
+            [
+                df,
+                df.groupby("_code", as_index=False)
+                .shift(-1)
+                .rename(columns={c: "1mf_" + c for c in df.columns}),
+            ],
+            axis=1,
+        )
+        .dropna()
+        .reset_index(drop=True)
+    )
+    bs = bins_text_to_list(bns)
+    colors = [ORANGES[int(cl)] for cl in np.linspace(0, len(ORANGES) - 1, len(bs))]
+    lbls = [f"({bs[i-1]}, {bs[i]}]" for i, _ in enumerate(bs) if i > 0]
+
+    df["monthly_high_end_rtn_category"] = pd.cut(
+        np.exp(df["monthly_high_end_rtn"])-1., bins=bs, labels=lbls
+    ).astype(str)
+
+    # Make Bar Chart
+
+    if tpe == 'exp':
+        df[mtrcs] = np.exp(df[mtrcs]) - 1.
+    df = df.groupby("monthly_high_end_rtn_category")[mtrcs].agg(stt)
+
+    m_titles = {d["value"]: d["label"] for d in OPTIONS["metrics"]}
+    st_titles = {d["value"]: d["label"] for d in OPTIONS["statistics"]}
+
+    fig = make_subplots(
+        rows=1,
+        cols=2,
+        start_cell="top-left",
+        subplot_titles=[f"{m_titles[m]} - {st_titles[stt]}" for m in mtrcs],
+    )
+
+    for midx, m in enumerate(mtrcs):
+        fig.add_trace(
+            go.Bar(
+                y=df[m],
+                x=df[m].index,
+                marker={
+                    "color": colors,
+                },
+                name=m_titles[m],
+            ),
+            row=1,
+            col=midx + 1,
+        )
+
+    fig.for_each_xaxis(
+        lambda x: x.update(showline=False, showgrid=False, zeroline=False)
+    )
+    fig.for_each_yaxis(
+        lambda x: x.update(showline=False, showgrid=False, zeroline=False)
+    )
+
+    fig.update_layout(
+        paper_bgcolor="rgba(0,0,0,0)",
+        plot_bgcolor="rgba(0,0,0,0)",
+        autosize=True,
+        margin=dict(t=30, r=10, b=30, l=10),
+        showlegend=False,
+        font=dict(color="rgba(255,255,255,255)"),
+    )
+
+    return fig
+
+
 app.layout = html.Div(
     id="big-app-container",
     children=[
@@ -898,7 +1038,7 @@ def render_tab_content(tab_switch):
                 build_quick_stats_panel(),
                 html.Div(
                     id="graphs-container",
-                    children=[build_top_panel(), build_chart_panel()],
+                    children=[build_top_panel(), build_chart_panel(), build_dist_panel()],
                 ),
             ],
         )

@@ -19,6 +19,8 @@ gunicorn = "^22.0.0"
 requests = "^2.31.0"
 statsmodels = "^0.14.2"
 scikit-learn = "^1.5.0"
+torch = "^2.3.1"
+lightgbm = "^4.3.0"
 
 
 [tool.poetry.group.dev.dependencies]

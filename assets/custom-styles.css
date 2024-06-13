@@ -264,6 +264,20 @@ body {
   display: inline-block;
 }
 
+#eda-dist-dropdowns {
+  height: auto;
+  flex-direction: row;
+  display: flex;
+  justify-content: left;
+  /*width: 100%;*/
+}
+
+#eda-dist-dropdown1 {
+  width: 30%;
+  margin: 1rem;
+  display: inline-block;
+}
+
 #metric_header > div {
   font-weight: bold;
   font-size: 1.35rem;
@@ -285,6 +299,12 @@ body {
   border-top: #1E2130 solid 0.8rem;
 }
 
+#dist-section-container {
+  position: relative;
+  z-index: 4;
+  width: 100%;
+  border-top: #1E2130 solid 0.8rem;
+}
 
 #ooc-piechart-outer {
   height: 100%;
